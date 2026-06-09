@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống ATS Lọc CV Thông minh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .drag-over { border-color: #4f46e5 !important; background-color: #e0e7ff !important; }
+        .modal-content { transition: all 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 text-white p-2.5 rounded-lg shadow-md"><i class="fas fa-brain text-xl"></i></div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight">AI Resume Tracker</h1>
+                        <p class="text-xs text-indigo-600 font-semibold">Knowledge Graph Powered</p>
+                    </div>
+                </div>
+                <div class="hidden md:block text-right border-l pl-4 border-slate-200">
+                    <span class="text-sm font-bold text-slate-700 block">Đỗ Tiến Đạt</span>
+                    <span class="text-xs text-slate-500 font-medium">Đồ án KLTN - Đại học Thăng Long</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-indigo-500"></div>
+                <h2 class="text-lg font-bold mb-5 text-slate-800 flex items-center gap-2"><i class="fas fa-cloud-upload-alt text-indigo-500"></i> Nạp dữ liệu hệ thống</h2>
+                
+                <form id="uploadForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Đoạn văn JD / Yêu cầu Kỹ năng:</label>
+                        <textarea id="jd_skills" rows="4" class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none" placeholder="Copy & Paste nguyên đoạn JD vào đây..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Tải lên CV Ứng viên (PDF):</label>
+                        <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center transition-all cursor-pointer hover:bg-slate-50 relative group">
+                            <input type="file" id="cv_file" accept=".pdf,.txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
+                            <div class="text-slate-500 pointer-events-none group-hover:text-indigo-500 transition-colors">
+                                <i class="fas fa-file-pdf text-4xl mb-3 text-indigo-400 group-hover:scale-110 transition-transform"></i>
+                                <p class="text-sm font-medium mb-1">Kéo thả file vào đây hoặc <span class="text-indigo-600 underline">chọn file</span></p>
+                                <p class="text-xs text-slate-400 mt-2 bg-slate-100 inline-block px-2 py-1 rounded-md" id="fileNameDisplay">Tối đa 5MB</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2">
+                        <i id="btnIcon" class="fas fa-search"></i> <span id="btnText">Tiến hành Phân tích CV</span> <i id="loadingIcon" class="fas fa-circle-notch fa-spin hidden"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-trophy text-yellow-500"></i> Bảng Xếp Hạng Ứng Viên</h2>
+                    <button onclick="loadLeaderboard()" class="text-slate-600 hover:text-indigo-600 transition-colors bg-slate-100 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2"><i class="fas fa-sync-alt"></i> Làm mới</button>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider font-bold">
+                                <th class="p-4 w-1/3">Hồ sơ Ứng viên</th>
+                                <th class="p-4 text-center w-1/4">Độ phù hợp</th>
+                                <th class="p-4 text-center w-1/4">Trạng thái</th>
+                                <th class="p-4 text-right w-1/6">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody" class="divide-y divide-slate-100 text-sm">
+                            <tr><td colspan="4" class="text-center p-12 text-slate-400"><i class="fas fa-box-open text-4xl mb-3 block text-slate-300"></i>Chưa có dữ liệu</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="candidateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-95 opacity-0 modal-content" id="modalContent">
+            
+            <div class="p-6 border-b flex justify-between items-start bg-slate-50 rounded-t-2xl">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2"><i class="far fa-file-pdf text-red-500"></i> <span id="modalFileName">Ten_CV.pdf</span></h3>
+                    <p class="text-sm text-slate-500 mt-1"><i class="far fa-clock mr-1"></i> Quét lúc: <span id="modalDate" class="font-medium"></span></p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 bg-white hover:bg-red-50 border border-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"><i class="fas fa-times text-lg"></i></button>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <div class="bg-indigo-50/50 border-l-4 border-indigo-500 p-4 rounded-r-xl shadow-sm">
+                    <p class="text-xs text-indigo-700 font-black mb-2 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-id-card"></i> Trích xuất nhanh Hồ sơ</p>
+                    <p class="text-slate-700 text-sm leading-relaxed italic" id="modalSummary">Đang tải tóm tắt...</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100 flex flex-col justify-center items-center text-center">
+                        <p class="text-sm text-indigo-600 font-bold mb-1 uppercase tracking-wider">Điểm AI + Neo4j</p>
+                        <p class="text-4xl font-black text-indigo-900" id="modalScore">0%</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col justify-center items-center text-center">
+                        <p class="text-sm text-slate-600 font-bold mb-2 uppercase tracking-wider">Trạng thái duyệt</p>
+                        <div id="modalStatusBadge"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                    <h4 class="font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2 text-lg"><i class="fas fa-layer-group text-indigo-500"></i> Phân tích Kỹ năng</h4>
+                    <div class="space-y-5">
+                        <div>
+                            <p class="text-sm font-bold text-green-700 mb-2 flex items-center gap-1"><i class="fas fa-check-circle"></i> Kỹ năng đáp ứng:</p>
+                            <div class="flex flex-wrap gap-2" id="modalMatchSkills"></div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-blue-700 mb-2 flex items-center gap-1"><i class="fas fa-plus-circle"></i> Nền tảng (Cộng điểm vớt):</p>
+                            <div class="space-y-2" id="modalPartialSkills"></div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-red-700 mb-2 flex items-center gap-1"><i class="fas fa-times-circle"></i> Kỹ năng thiếu hụt:</p>
+                            <div class="flex flex-wrap gap-2" id="modalMissingSkills"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 rounded-xl p-5 border border-amber-200 shadow-sm">
+                    <h4 class="font-bold text-amber-900 mb-4 flex items-center gap-2 text-lg"><i class="fas fa-route text-amber-600"></i> Đề xuất Lộ trình Đào tạo</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="modalLearningPath"></div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 bg-slate-50 text-right rounded-b-2xl">
+                <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md">Đóng cửa sổ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = "http://localhost:8000/api";
+        let listCVData = {};
+
+        const fileInput = document.getElementById('cv_file');
+        const dropZone = document.getElementById('dropZone');
+        
+        fileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                document.getElementById('fileNameDisplay').innerHTML = `<span class="text-indigo-700 font-bold bg-indigo-100 px-3 py-1 rounded-full"><i class="fas fa-check mr-1"></i> ${e.target.files[0].name}</span>`;
+                dropZone.classList.add('border-indigo-400', 'bg-indigo-50');
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+        ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.add('drag-over')));
+        ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over')));
+        dropZone.addEventListener('drop', e => { fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); });
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/bang_xep_hang`);
+                const data = await res.json();
+                const tbody = document.getElementById('leaderboardBody');
+                tbody.innerHTML = '';
+                listCVData = {}; 
+
+                if (data.danh_sach.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-10 text-slate-400">Chưa có ứng viên nào trong CSDL.</td></tr>';
+                    return;
+                }
+
+                data.danh_sach.forEach(cv => {
+                    listCVData[cv.id_ung_vien] = cv; 
+                    let st = { bg: "bg-red-100", text: "text-red-700", label: "LOẠI", icon: "fa-ban", bar: "bg-red-500" };
+                    if (cv.trang_thai === "PASS") st = { bg: "bg-green-100", text: "text-green-700", label: "ĐẠT YÊU CẦU", icon: "fa-check-circle", bar: "bg-green-500" };
+                    else if (cv.trang_thai === "MAYBE") st = { bg: "bg-amber-100", text: "text-amber-700", label: "CÂN NHẮC", icon: "fa-exclamation-triangle", bar: "bg-amber-500" };
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="p-4 border-t border-slate-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm border border-indigo-100"><i class="far fa-user text-lg"></i></div>
+                                    <div>
+                                        <p class="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors cursor-pointer" onclick="openModal('${cv.id_ung_vien}')">${cv.ten_file}</p>
+                                        <p class="text-xs text-slate-400 font-medium">${cv.ngay_nop}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 border-t border-slate-100 text-center">
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <span class="font-bold text-slate-800 text-base">${cv.diem_so}%</span>
+                                    <div class="w-full max-w-[120px] bg-slate-200 rounded-full h-2 shadow-inner">
+                                        <div class="${st.bar} h-2 rounded-full" style="width: ${cv.diem_so}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 border-t border-slate-100 text-center">
+                                <span class="px-3 py-1.5 rounded-md text-xs font-bold ${st.bg} ${st.text} inline-flex items-center gap-1 border border-white"><i class="fas ${st.icon}"></i> ${st.label}</span>
+                            </td>
+                            <td class="p-4 border-t border-slate-100 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <button onclick="openModal('${cv.id_ung_vien}')" class="text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors"><i class="fas fa-eye"></i></button>
+                                    <button onclick="deleteCV('${cv.id_ung_vien}', '${cv.ten_file}')" class="text-red-500 bg-red-50 hover:bg-red-500 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) { console.error("Lỗi tải BXH:", error); }
+        }
+
+        function openModal(id) {
+            const cv = listCVData[id];
+            if(!cv) return;
+
+            document.getElementById('modalFileName').innerText = cv.ten_file;
+            document.getElementById('modalDate').innerText = cv.ngay_nop;
+            document.getElementById('modalScore').innerText = `${cv.diem_so}%`;
+            
+            // Render Tóm tắt (Bảo vệ lỗi cho các CV cũ chưa có data này)
+            document.getElementById('modalSummary').innerText = cv.tom_tat_cv ? cv.tom_tat_cv : "Không có thông tin tóm tắt cho ứng viên này (Vui lòng quét lại file).";
+
+            let badge = '';
+            if (cv.trang_thai === "PASS") badge = '<span class="px-4 py-2 rounded-lg text-sm font-black bg-green-100 text-green-700 border border-green-200"><i class="fas fa-check-circle mr-1"></i> ĐẠT YÊU CẦU</span>';
+            else if (cv.trang_thai === "MAYBE") badge = '<span class="px-4 py-2 rounded-lg text-sm font-black bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-exclamation-triangle mr-1"></i> ĐÀO TẠO THÊM</span>';
+            else badge = '<span class="px-4 py-2 rounded-lg text-sm font-black bg-red-100 text-red-700 border border-red-200"><i class="fas fa-ban mr-1"></i> LOẠI BỎ</span>';
+            document.getElementById('modalStatusBadge').innerHTML = badge;
+
+            const mHtml = cv.chi_tiet_danh_gia.khop_hoan_toan.map(s => `<span class="bg-green-100 border border-green-300 text-green-800 px-3 py-1.5 rounded-md text-sm font-bold">${s}</span>`).join('');
+            document.getElementById('modalMatchSkills').innerHTML = mHtml || '<span class="text-sm text-slate-500 italic">Không có kỹ năng khớp hoàn toàn.</span>';
+
+            const pHtml = cv.chi_tiet_danh_gia.khop_nen_tang.map(s => `<div class="bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg text-sm text-slate-800"><span class="font-bold text-blue-700">${s.yeu_cau}</span> <i class="fas fa-arrow-right text-slate-400 mx-2"></i> Nhờ có nền tảng: <span class="font-bold bg-white px-2 py-0.5 rounded border border-blue-100">${s.da_co_nen_tang}</span> <span class="text-green-600 font-bold ml-1">(+0.5đ)</span></div>`).join('');
+            document.getElementById('modalPartialSkills').innerHTML = pHtml || '<span class="text-sm text-slate-500 italic">Không phát hiện kỹ năng nền tảng tương đương.</span>';
+
+            const missHtml = cv.chi_tiet_danh_gia.thieu_hoan_toan.map(s => `<span class="bg-red-50 border border-red-300 text-red-700 px-3 py-1.5 rounded-md text-sm font-bold">${s}</span>`).join('');
+            document.getElementById('modalMissingSkills').innerHTML = missHtml || '<span class="text-sm text-green-600 font-bold"><i class="fas fa-check-double mr-1"></i> Không thiếu kỹ năng nào.</span>';
+
+            const pathDiv = document.getElementById('modalLearningPath');
+            if (Object.keys(cv.lo_trinh_hoc).length === 0) {
+                pathDiv.innerHTML = '<div class="col-span-full"><p class="text-amber-800 text-sm font-bold"><i class="fas fa-thumbs-up mr-1"></i> Không cần tạo lộ trình bổ sung.</p></div>';
+            } else {
+                pathDiv.innerHTML = '';
+                for (const [skill, path] of Object.entries(cv.lo_trinh_hoc)) {
+                    pathDiv.innerHTML += `
+                        <div class="bg-white p-3 rounded-lg border border-amber-200 flex flex-col justify-between">
+                            <p class="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wide border-b border-amber-100 pb-1">Mục tiêu: ${skill}</p>
+                            <p class="text-indigo-700 font-bold text-sm bg-indigo-50 px-2 py-2 rounded flex items-center gap-2"><i class="fas fa-location-arrow text-indigo-400"></i> ${path}</p>
+                        </div>
+                    `;
+                }
+            }
+
+            const modal = document.getElementById('candidateModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('candidateModal');
+            const content = document.getElementById('modalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        async function deleteCV(id, fileName) {
+            const result = await Swal.fire({
+                title: 'Cảnh báo xóa!', text: `Hành động này sẽ xóa vĩnh viễn hồ sơ của ${fileName}.`,
+                icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fas fa-trash-alt mr-1"></i> Xóa ngay!', cancelButtonText: 'Hủy thao tác'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/xoa_cv/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        Swal.fire({ title: 'Đã xóa!', text: 'Dữ liệu đã bị loại bỏ.', icon: 'success', timer: 1500, showConfirmButton: false });
+                        loadLeaderboard();
+                    }
+                } catch (error) { Swal.fire('Lỗi mạng', 'Không thể kết nối máy chủ.', 'error'); }
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const [btnText, loadingIcon, btnIcon, submitBtn] = ['btnText', 'loadingIcon', 'btnIcon', 'submitBtn'].map(id => document.getElementById(id));
+            const fileInput = document.getElementById('cv_file');
+            
+            if (fileInput.files.length === 0) return Swal.fire("Thiếu File", "Vui lòng đính kèm CV (PDF)", "error");
+
+            btnText.innerText = "Hệ thống đang quét AI...";
+            loadingIcon.classList.remove('hidden');
+            btnIcon.classList.add('hidden');
+            submitBtn.classList.add('opacity-75', 'cursor-wait');
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            formData.append("jd_skills_string", document.getElementById('jd_skills').value);
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/upload_cv`, { method: 'POST', body: formData });
+                if(res.ok) {
+                    Swal.fire({ title: 'Hoàn tất!', text: 'Đã phân tích xong CV.', icon: 'success', timer: 2000, showConfirmButton: false });
+                    loadLeaderboard();
+                } else { Swal.fire("Lỗi Server", "Không thể phân tích file này", "error"); }
+            } catch (error) { Swal.fire("Lỗi kết nối", "Backend không phản hồi.", "error"); } 
+            finally {
+                btnText.innerText = "Tiến hành Phân tích CV";
+                loadingIcon.classList.add('hidden');
+                btnIcon.classList.remove('hidden');
+                submitBtn.classList.remove('opacity-75', 'cursor-wait');
+                fileInput.value = ""; 
+                dropZone.classList.remove('border-indigo-400', 'bg-indigo-50');
+                document.getElementById('fileNameDisplay').innerHTML = "Tối đa 5MB";
+            }
+        });
+
+        window.onload = loadLeaderboard;
+    </script>
+</body>
+</html>

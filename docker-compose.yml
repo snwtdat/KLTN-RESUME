@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: kltn_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  # 2. Đồ thị Tri thức Neo4j
+  neo4j:
+    image: neo4j:latest
+    container_name: kltn_neo4j
+    ports:
+      - "7474:7474" # Trình duyệt Neo4j
+      - "7687:7687" # Cổng kết nối Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/12345678
+    volumes:
+      - neo4j_data:/data
+
+  # 3. Backend API (XLM-RoBERTa + FastAPI)
+  backend:
+    build: .
+    container_name: kltn_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+      - neo4j
+    # Cập nhật đường dẫn kết nối khi chạy trong mạng Docker
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/
+      - NEO4J_URL=neo4j://127.0.0.1:7687
+
+volumes:
+  mongodb_data:
+  neo4j_data:
